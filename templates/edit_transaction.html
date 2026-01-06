@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Editar Transação</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div class="brand">
+                <h1>Editar transação</h1>
+                <div class="muted">Atualizar dados</div>
+            </div>
+            <div class="topbar-actions">
+                <a class="btn btn-secondary" href="/transactions">Voltar</a>
+            </div>
+        </div>
+
+        <div class="card">
+            {% if error %}
+                <div class="alert">{{ error }}</div>
+            {% endif %}
+            <form method="POST" class="grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                <div class="field">
+                    <label>Data</label>
+                    <input type="date" name="date" required value="{{ transaction.date.strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="field">
+                    <label>Tipo</label>
+                    <select name="type" required>
+                        <option value="receita" {% if transaction.type == 'receita' %}selected{% endif %}>Receita</option>
+                        <option value="despesa" {% if transaction.type == 'despesa' %}selected{% endif %}>Despesa</option>
+                    </select>
+                </div>
+
+                <div class="field" style="grid-column: 1 / -1;">
+                    <label>Descrição</label>
+                    <input type="text" name="description" placeholder="Ex: Mercado" value="{{ transaction.description or '' }}">
+                </div>
+
+                <div class="field">
+                    <label>Valor</label>
+                    <input type="number" name="amount" step="0.01" required value="{{ transaction.amount }}">
+                </div>
+                <div class="field">
+                    <label>Categoria</label>
+                    <select name="category">
+                        <option value="" {% if not transaction.category_id %}selected{% endif %}>Sem categoria</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}" {% if transaction.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="field" style="grid-column: 1 / -1;">
+                    <button class="btn" type="submit">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

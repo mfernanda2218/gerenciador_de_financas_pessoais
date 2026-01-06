@@ -1,0 +1,271 @@
+body {
+    font-family: Arial;
+    margin: 0;
+    background: #0b1220;
+    color: #e8eefc;
+}
+
+a {
+    color: inherit;
+}
+
+.page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.brand h1 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.muted {
+    opacity: 0.75;
+    font-size: 12px;
+}
+
+.topbar-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.card {
+    background: #111a2e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+}
+
+.card h2 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.field label {
+    display: block;
+    font-size: 12px;
+    opacity: 0.85;
+    margin-bottom: 6px;
+}
+
+input, select, button {
+    font: inherit;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+select,
+input[type="file"] {
+    width: 100%;
+    box-sizing: border-box;
+    background: #0b1220;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e8eefc;
+    border-radius: 10px;
+    padding: 10px 12px;
+    outline: none;
+}
+
+input[type="file"] {
+    padding: 8px 10px;
+}
+
+button, .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    border-radius: 10px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #2a5bd7;
+    color: #ffffff;
+    text-decoration: none;
+    user-select: none;
+}
+
+.btn-secondary {
+    background: transparent;
+}
+
+.inline {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.inline input {
+    flex: 1;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.stat {
+    background: #111a2e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.stat .label {
+    opacity: 0.8;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.stat .value {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.charts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.charts .card {
+    min-height: 320px;
+}
+
+canvas {
+    width: 100% !important;
+    height: 240px !important;
+}
+
+.alert {
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: rgba(255, 99, 132, 0.16);
+    border: 1px solid rgba(255, 99, 132, 0.35);
+    color: #ffd0db;
+    font-weight: bold;
+    margin-bottom: 14px;
+    font-size: 18px;
+}
+
+.table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: 10px 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    vertical-align: middle;
+}
+
+.table thead th {
+    text-align: left;
+    font-size: 12px;
+    opacity: 0.85;
+    border-top: none;
+}
+
+.right {
+    text-align: right;
+}
+
+.center {
+    text-align: center;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.badge-good {
+    background: rgba(54, 162, 235, 0.16);
+    border-color: rgba(54, 162, 235, 0.35);
+}
+
+.badge-bad {
+    background: rgba(255, 99, 132, 0.16);
+    border-color: rgba(255, 99, 132, 0.35);
+}
+
+.btn-sm {
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+}
+
+form {
+    margin: 0;
+}
+
+form h1 {
+    margin: 0 0 12px 0;
+    font-size: 18px;
+}
+
+form p {
+    margin: 12px 0 0 0;
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+form input {
+    margin-bottom: 10px;
+}
+
+@media (max-width: 900px) {
+    .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .charts {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    .topbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .grid {
+        grid-template-columns: 1fr;
+    }
+    .stats {
+        grid-template-columns: 1fr;
+    }
+    .inline {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Categorias</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div class="brand">
+                <h1>Categorias</h1>
+                <div class="muted">Criar / renomear / excluir</div>
+            </div>
+            <div class="topbar-actions">
+                <a class="btn btn-secondary" href="/">Dashboard</a>
+                <a class="btn btn-secondary" href="/transactions">Transações</a>
+            </div>
+        </div>
+
+        <div class="card">
+            {% if error %}
+                <div class="alert">{{ error }}</div>
+            {% endif %}
+            <form class="inline" method="POST" action="/categories/add" style="align-items:flex-end;">
+                <div class="field" style="flex:1;">
+                    <label>Nova categoria</label>
+                    <input type="text" name="name" placeholder="Ex: Alimentação" required>
+                </div>
+                <button class="btn" type="submit">Adicionar</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th class="right">Transações</th>
+                            <th class="right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories %}
+                            <tr>
+                                <td>{{ cat.name }}</td>
+                                <td class="right">{{ counts.get(cat.id, 0) }}</td>
+                                <td class="right">
+                                    <form method="POST" action="/category/{{ cat.id }}/edit" class="inline" style="justify-content:flex-end;">
+                                        <input type="text" name="name" value="{{ cat.name }}" required>
+                                        <button class="btn btn-secondary btn-sm" type="submit">Renomear</button>
+                                    </form>
+                                    <form method="POST" action="/category/{{ cat.id }}/delete" style="display:inline;" onsubmit="return confirm('Excluir esta categoria? As transações ficarão como sem categoria.');">
+                                        <button class="btn btn-secondary btn-sm" type="submit">Excluir</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        {% if not categories %}
+                            <tr>
+                                <td colspan="3" class="center muted">Nenhuma categoria criada.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

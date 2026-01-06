@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Transações</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div class="brand">
+                <h1>Transações</h1>
+                <div class="muted">Listar / editar / excluir</div>
+            </div>
+            <div class="topbar-actions">
+                <a class="btn btn-secondary" href="/">Dashboard</a>
+                <a class="btn" href="/add_transaction">Adicionar</a>
+                <a class="btn btn-secondary" href="/categories">Categorias</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <form class="grid" method="GET" action="/transactions">
+                <div class="field">
+                    <label for="month">Mês</label>
+                    <input type="number" id="month" name="month" placeholder="1-12" min="1" max="12" value="{{ filters.month or '' }}">
+                </div>
+                <div class="field">
+                    <label for="year">Ano</label>
+                    <input type="number" id="year" name="year" placeholder="Ex: 2026" min="2000" max="2100" value="{{ filters.year or '' }}">
+                </div>
+                <div class="field">
+                    <label for="type">Tipo</label>
+                    <select id="type" name="type">
+                        <option value="" {% if not filters.type %}selected{% endif %}>Todos</option>
+                        <option value="receita" {% if filters.type == 'receita' %}selected{% endif %}>Receita</option>
+                        <option value="despesa" {% if filters.type == 'despesa' %}selected{% endif %}>Despesa</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="category">Categoria</label>
+                    <select id="category" name="category">
+                        <option value="" {% if not filters.category %}selected{% endif %}>Todas</option>
+                        <option value="none" {% if filters.category == 'none' %}selected{% endif %}>Sem categoria</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}" {% if filters.category == (cat.id|string) %}selected{% endif %}>{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field" style="grid-column: 1 / -1;">
+                    <label for="q">Busca</label>
+                    <input type="text" id="q" name="q" placeholder="Descrição..." value="{{ filters.q or '' }}">
+                </div>
+                <div class="field" style="grid-column: 1 / -1;">
+                    <button class="btn" type="submit">Aplicar filtros</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Tipo</th>
+                            <th>Categoria</th>
+                            <th class="right">Valor</th>
+                            <th class="right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in transactions %}
+                            <tr>
+                                <td>{{ t.date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ t.description or '' }}</td>
+                                <td>
+                                    {% if t.type == 'receita' %}
+                                        <span class="badge badge-good">Receita</span>
+                                    {% else %}
+                                        <span class="badge badge-bad">Despesa</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ category_map.get(t.category_id, 'Sem categoria') }}</td>
+                                <td class="right">{{ '%.2f'|format(t.amount) }}</td>
+                                <td class="right">
+                                    <a class="btn btn-secondary btn-sm" href="/transaction/{{ t.id }}/edit">Editar</a>
+                                    <form method="POST" action="/transaction/{{ t.id }}/delete" style="display:inline;" onsubmit="return confirm('Excluir esta transação?');">
+                                        <button class="btn btn-secondary btn-sm" type="submit">Excluir</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        {% if not transactions %}
+                            <tr>
+                                <td colspan="6" class="center muted">Nenhuma transação encontrada.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
