@@ -22,6 +22,14 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
     monthly_limit = db.Column(db.Float, default=1000)
+    
+    def set_password(self, password):
+        """Define a senha hash do usuário"""
+        self.password = bcrypt.generate_password_hash(password).decode('utf-8')
+    
+    def check_password(self, password):
+        """Verifica se a senha está correta"""
+        return bcrypt.check_password_hash(self.password, password)
 
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
