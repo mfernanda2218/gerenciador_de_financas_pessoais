@@ -190,3 +190,54 @@ Depois acesse `http://127.0.0.1:5000/login`.
 - `/dashboard_data`
 - `/set_monthly_limit`
 
+## Segurança
+
+### Configuração de Ambiente
+
+Antes de colocar em produção, configure as variáveis de ambiente:
+
+1. Copie o arquivo `.env.example` para `.env`:
+```bash
+cp .env.example .env
+```
+
+2. Edite o arquivo `.env` e defina valores seguros:
+```
+SECRET_KEY=your_very_secure_random_key_here
+FLASK_ENV=production
+DATABASE_URL=sqlite:///database.db
+```
+
+**Importante**: Gere uma chave secreta forte usando:
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+### Boas Práticas de Segurança
+
+- **Nunca** commitar o arquivo `.env` no repositório
+- **Nunca** usar a chave secreta padrão em produção
+- **Sempre** use `FLASK_ENV=production` em ambientes de produção
+- Mantenha as dependências atualizadas regularmente
+- Use HTTPS em produção
+- Considere usar um banco de dados mais robusto (PostgreSQL, MySQL) para produção
+- Faça backups regulares do banco de dados
+
+### Proteções Implementadas
+
+- **CSRF Protection**: Proteção contra ataques CSRF com Flask-WTF
+- **Password Hashing**: Senhas criptografadas com Bcrypt
+- **Session Management**: Gerenciamento seguro de sessões com Flask-Login
+- **Input Validation**: Validação de dados em formulários e CSV
+- **Error Handling**: Tratamento de erros para evitar vazamento de informações
+- **Logging**: Logs configurados para monitoramento
+
+### Próximas Melhorias Sugeridas
+
+- Rate limiting em endpoints de autenticação
+- Validação de força de senha
+- Autenticação de dois fatores (2FA)
+- Auditoria de ações sensíveis
+- Testes de segurança automatizados
+- Integração com CI/CD para testes de segurança
+

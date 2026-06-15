@@ -39,6 +39,10 @@ function loadDashboard() {
     if (month) params.set('month', month);
     if (year) params.set('year', year);
 
+    // Show loading state
+    const statsElements = document.querySelectorAll('.stat .value');
+    statsElements.forEach(el => el.textContent = 'Carregando...');
+
     fetch(`/dashboard_data?${params.toString()}`)
         .then(async (response) => {
             const data = await response.json();
@@ -99,6 +103,8 @@ function loadDashboard() {
         })
         .catch(err => {
             setAlert(err.message || 'Erro ao carregar dados');
+            const statsElements = document.querySelectorAll('.stat .value');
+            statsElements.forEach(el => el.textContent = 'Erro');
         });
 }
 
@@ -106,6 +112,12 @@ function addCategory() {
     const input = document.getElementById('category-name');
     const name = (input?.value || '').trim();
     if (!name) return;
+
+    const button = document.querySelector('button[onclick="addCategory()"]');
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Adicionando...';
+    }
 
     fetch('/add_category', {
         method: 'POST',
@@ -121,15 +133,29 @@ function addCategory() {
         })
         .then(() => {
             if (input) input.value = '';
+            setAlert('Categoria adicionada com sucesso');
+            setTimeout(() => setAlert(''), 2000);
         })
         .catch(err => {
             setAlert(err.message || 'Erro ao adicionar categoria');
+        })
+        .finally(() => {
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Adicionar';
+            }
         });
 }
 
 function saveMonthlyLimit() {
     const input = document.getElementById('monthlyLimit');
     const value = (input?.value || '').trim();
+
+    const button = document.querySelector('button[onclick="saveMonthlyLimit()"]');
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Salvando...';
+    }
 
     fetch('/set_monthly_limit', {
         method: 'POST',
@@ -145,9 +171,17 @@ function saveMonthlyLimit() {
         })
         .then((data) => {
             if (input) input.value = data.monthly_limit;
+            setAlert('Limite salvo com sucesso');
+            setTimeout(() => setAlert(''), 2000);
             loadDashboard();
         })
         .catch(err => {
             setAlert(err.message || 'Erro ao salvar limite');
+        })
+        .finally(() => {
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Salvar limite';
+            }
         });
 }

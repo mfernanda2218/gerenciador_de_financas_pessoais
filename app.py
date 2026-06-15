@@ -2,19 +2,32 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from io import StringIO, BytesIO
 from datetime import datetime
 import os
+from dotenv import load_dotenv
+import logging
+
+load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'  # Mude para uma chave segura
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///database.db')
+app.config['FLASK_ENV'] = os.getenv('FLASK_ENV', 'development')
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+csrf = CSRFProtect(app)
+
+# Logging configuration
+logging.basicConfig(
+    level=logging.INFO if app.config['FLASK_ENV'] == 'production' else logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(name)s: %(message)s'
+)
 
 # Modelos do Banco
 class User(db.Model, UserMixin):
@@ -51,6 +64,17 @@ class Transaction(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+def get_category_counts(user_id):
+    """Helper function to get transaction counts per category"""
+    return {
+        row[0]: row[1]
+        for row in db.session.query(Transaction.category_id, db.func.count(Transaction.id))
+        .filter(Transaction.user_id == user_id)
+        .group_by(Transaction.category_id)
+        .all()
+        if row[0] is not None
+    }
 
 def _ensure_schema():
     db.create_all()
@@ -264,14 +288,7 @@ def delete_transaction(transaction_id):
 @login_required
 def categories():
     categories_list = Category.query.filter_by(user_id=current_user.id).order_by(Category.name.asc()).all()
-    counts = {
-        row[0]: row[1]
-        for row in db.session.query(Transaction.category_id, db.func.count(Transaction.id))
-        .filter(Transaction.user_id == current_user.id)
-        .group_by(Transaction.category_id)
-        .all()
-        if row[0] is not None
-    }
+    counts = get_category_counts(current_user.id)
     return render_template('categories.html', categories=categories_list, counts=counts, error=None)
 
 @app.route('/categories/add', methods=['POST'])
@@ -287,14 +304,7 @@ def add_category_page():
     except IntegrityError:
         db.session.rollback()
         categories_list = Category.query.filter_by(user_id=current_user.id).order_by(Category.name.asc()).all()
-        counts = {
-            row[0]: row[1]
-            for row in db.session.query(Transaction.category_id, db.func.count(Transaction.id))
-            .filter(Transaction.user_id == current_user.id)
-            .group_by(Transaction.category_id)
-            .all()
-            if row[0] is not None
-        }
+        counts = get_category_counts(current_user.id)
         return render_template('categories.html', categories=categories_list, counts=counts, error='Categoria já existe.')
     return redirect(url_for('categories'))
 
@@ -315,14 +325,7 @@ def edit_category(category_id):
     except IntegrityError:
         db.session.rollback()
         categories_list = Category.query.filter_by(user_id=current_user.id).order_by(Category.name.asc()).all()
-        counts = {
-            row[0]: row[1]
-            for row in db.session.query(Transaction.category_id, db.func.count(Transaction.id))
-            .filter(Transaction.user_id == current_user.id)
-            .group_by(Transaction.category_id)
-            .all()
-            if row[0] is not None
-        }
+        counts = get_category_counts(current_user.id)
         return render_template('categories.html', categories=categories_list, counts=counts, error='Já existe uma categoria com esse nome.')
 
     return redirect(url_for('categories'))
@@ -342,20 +345,63 @@ def delete_category(category_id):
 @app.route('/import_csv', methods=['POST'])
 @login_required
 def import_csv():
+    if 'file' not in request.files:
+        return jsonify({'message': 'Nenhum arquivo enviado'}), 400
+    
     file = request.files['file']
-    df = pd.read_csv(file)
-    # Assuma colunas: date (YYYY-MM-DD), description, amount, type (receita/despesa), category
-    for _, row in df.iterrows():
-        cat = Category.query.filter_by(name=row['category'], user_id=current_user.id).first()
-        if not cat:
-            cat = Category(name=row['category'], user_id=current_user.id)
-            db.session.add(cat)
-            db.session.commit()
-        trans = Transaction(date=datetime.strptime(row['date'], '%Y-%m-%d'), description=row['description'],
-                            amount=row['amount'], type=row['type'], category_id=cat.id, user_id=current_user.id)
-        db.session.add(trans)
-    db.session.commit()
-    return jsonify({'message': 'CSV importado com sucesso'})
+    if file.filename == '':
+        return jsonify({'message': 'Nenhum arquivo selecionado'}), 400
+    
+    if not file.filename.endswith('.csv'):
+        return jsonify({'message': 'Arquivo deve ser CSV'}), 400
+    
+    try:
+        df = pd.read_csv(file)
+        
+        # Validate required columns
+        required_columns = ['date', 'description', 'amount', 'type', 'category']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            return jsonify({'message': f'Colunas obrigatórias faltando: {", ".join(missing_columns)}'}), 400
+        
+        # Validate data
+        for _, row in df.iterrows():
+            # Validate date format
+            try:
+                datetime.strptime(row['date'], '%Y-%m-%d')
+            except (ValueError, TypeError):
+                return jsonify({'message': f'Data inválida: {row["date"]}'}), 400
+            
+            # Validate amount
+            try:
+                float(row['amount'])
+            except (ValueError, TypeError):
+                return jsonify({'message': f'Valor inválido: {row["amount"]}'}), 400
+            
+            # Validate type
+            if row['type'] not in ['receita', 'despesa']:
+                return jsonify({'message': f'Tipo inválido: {row["type"]} (deve ser "receita" ou "despesa")'}), 400
+            
+            # Validate category
+            if pd.isna(row['category']) or not str(row['category']).strip():
+                return jsonify({'message': 'Categoria não pode estar vazia'}), 400
+        
+        # Import data
+        for _, row in df.iterrows():
+            cat = Category.query.filter_by(name=row['category'], user_id=current_user.id).first()
+            if not cat:
+                cat = Category(name=row['category'], user_id=current_user.id)
+                db.session.add(cat)
+                db.session.commit()
+            trans = Transaction(date=datetime.strptime(row['date'], '%Y-%m-%d'), description=row['description'],
+                                amount=float(row['amount']), type=row['type'], category_id=cat.id, user_id=current_user.id)
+            db.session.add(trans)
+        db.session.commit()
+        return jsonify({'message': 'CSV importado com sucesso'})
+    
+    except Exception as e:
+        logging.error(f'Erro ao importar CSV: {str(e)}')
+        return jsonify({'message': f'Erro ao processar CSV: {str(e)}'}), 400
 
 @app.route('/export_csv')
 @login_required
@@ -398,71 +444,75 @@ def export_csv():
 @app.route('/dashboard_data')
 @login_required
 def dashboard_data():
-    month = request.args.get('month')
-    year = request.args.get('year', datetime.now().year)
-    query = Transaction.query.filter_by(user_id=current_user.id)
-    if month:
-        try:
-            query = query.filter(db.extract('month', Transaction.date) == int(month))
-        except ValueError:
-            pass
-    if year:
-        try:
-            query = query.filter(db.extract('year', Transaction.date) == int(year))
-        except ValueError:
-            pass
-    trans = query.all()
+    try:
+        month = request.args.get('month')
+        year = request.args.get('year', datetime.now().year)
+        query = Transaction.query.filter_by(user_id=current_user.id)
+        if month:
+            try:
+                query = query.filter(db.extract('month', Transaction.date) == int(month))
+            except ValueError:
+                pass
+        if year:
+            try:
+                query = query.filter(db.extract('year', Transaction.date) == int(year))
+            except ValueError:
+                pass
+        trans = query.all()
 
-    category_map = {c.id: c.name for c in Category.query.filter_by(user_id=current_user.id).all()}
-    df = pd.DataFrame(
-        [
-            {
-                'amount': t.amount,
-                'type': t.type,
-                'category': category_map.get(t.category_id, 'Sem Categoria'),
-                'date': t.date,
-            }
-            for t in trans
-        ]
-    )
-    if not df.empty:
-        df['date'] = pd.to_datetime(df['date'])
-        df['signed_amount'] = df.apply(lambda r: r['amount'] if r['type'] == 'receita' else -r['amount'], axis=1)
-
-    # Métricas
-    gastos_por_categoria = (
-        df[df['type'] == 'despesa'].groupby('category')['amount'].sum().to_dict() if not df.empty else {}
-    )
-    receita = float(df[df['type'] == 'receita']['amount'].sum()) if not df.empty else 0
-    despesa = float(df[df['type'] == 'despesa']['amount'].sum()) if not df.empty else 0
-    saldo = receita - despesa
-
-    if not df.empty:
-        evolucao = (
-            df.groupby(df['date'].dt.to_period('M'))['signed_amount']
-            .sum()
-            .sort_index()
+        category_map = {c.id: c.name for c in Category.query.filter_by(user_id=current_user.id).all()}
+        df = pd.DataFrame(
+            [
+                {
+                    'amount': t.amount,
+                    'type': t.type,
+                    'category': category_map.get(t.category_id, 'Sem Categoria'),
+                    'date': t.date,
+                }
+                for t in trans
+            ]
         )
-        evolucao_mensal = {str(k): float(v) for k, v in evolucao.to_dict().items()}
-    else:
-        evolucao_mensal = {}
+        if not df.empty:
+            df['date'] = pd.to_datetime(df['date'])
+            df['signed_amount'] = df.apply(lambda r: r['amount'] if r['type'] == 'receita' else -r['amount'], axis=1)
 
-    # Alerta de gasto (limite geral por usuário)
-    alerta = None
-    limit_value = float(current_user.monthly_limit or 0)
-    if limit_value > 0 and despesa > limit_value:
-        alerta = 'Aviso: Gastos ultrapassaram o limite mensal!'
+        # Métricas
+        gastos_por_categoria = (
+            df[df['type'] == 'despesa'].groupby('category')['amount'].sum().to_dict() if not df.empty else {}
+        )
+        receita = float(df[df['type'] == 'receita']['amount'].sum()) if not df.empty else 0
+        despesa = float(df[df['type'] == 'despesa']['amount'].sum()) if not df.empty else 0
+        saldo = receita - despesa
 
-    return jsonify({
-        'total_mensal': saldo,
-        'total_receita': receita,
-        'total_despesa': despesa,
-        'gastos_por_categoria': gastos_por_categoria,
-        'receita_despesa': {'receita': receita, 'despesa': despesa},
-        'evolucao_mensal': evolucao_mensal,
-        'alerta': alerta,
-        'monthly_limit': limit_value
-    })
+        if not df.empty:
+            evolucao = (
+                df.groupby(df['date'].dt.to_period('M'))['signed_amount']
+                .sum()
+                .sort_index()
+            )
+            evolucao_mensal = {str(k): float(v) for k, v in evolucao.to_dict().items()}
+        else:
+            evolucao_mensal = {}
+
+        # Alerta de gasto (limite geral por usuário)
+        alerta = None
+        limit_value = float(current_user.monthly_limit or 0)
+        if limit_value > 0 and despesa > limit_value:
+            alerta = 'Aviso: Gastos ultrapassaram o limite mensal!'
+
+        return jsonify({
+            'total_mensal': saldo,
+            'total_receita': receita,
+            'total_despesa': despesa,
+            'gastos_por_categoria': gastos_por_categoria,
+            'receita_despesa': {'receita': receita, 'despesa': despesa},
+            'evolucao_mensal': evolucao_mensal,
+            'alerta': alerta,
+            'monthly_limit': limit_value
+        })
+    except Exception as e:
+        logging.error(f'Erro ao carregar dashboard_data: {str(e)}')
+        return jsonify({'message': 'Erro ao carregar dados do dashboard'}), 500
 
 @app.route('/set_monthly_limit', methods=['POST'])
 @login_required
@@ -493,4 +543,5 @@ def add_category():
     return jsonify({'message': 'Categoria adicionada'})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    debug_mode = app.config['FLASK_ENV'] == 'development'
+    app.run(debug=debug_mode)

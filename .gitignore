@@ -1,3 +1,4 @@
 .env
-.instanse
-.database.db
+instance/
+database.db
+*.db
