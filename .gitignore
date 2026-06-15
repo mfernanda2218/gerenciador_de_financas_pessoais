@@ -7,3 +7,4 @@ htmlcov/
 instance/
 database.db
 *.db
+database
