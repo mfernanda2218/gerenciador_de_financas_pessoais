@@ -2,7 +2,13 @@ import pytest
 import tempfile
 import os
 from datetime import datetime
-from app import app, db, User, Category, Transaction
+from app import app as flask_app, db, User, Category, Transaction
+
+
+@pytest.fixture
+def app():
+    """Fornece a aplicação Flask para testes que precisam de app_context."""
+    return flask_app
 
 
 @pytest.fixture
@@ -10,14 +16,14 @@ def client():
     """Cria um cliente de teste com banco de dados temporário"""
     db_fd, db_path = tempfile.mkstemp()
     
-    app.config['TESTING'] = True
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-    app.config['WTF_CSRF_ENABLED'] = False
-    app.config['SECRET_KEY'] = 'test-secret-key'
+    flask_app.config['TESTING'] = True
+    flask_app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    flask_app.config['WTF_CSRF_ENABLED'] = False
+    flask_app.config['SECRET_KEY'] = 'test-secret-key'
     
-    with app.app_context():
+    with flask_app.app_context():
         db.create_all()
-        yield app.test_client()
+        yield flask_app.test_client()
         db.drop_all()
     
     os.close(db_fd)
@@ -35,7 +41,7 @@ def user():
 @pytest.fixture
 def authenticated_client(client, user):
     """Cria um cliente autenticado"""
-    with app.app_context():
+    with flask_app.app_context():
         db.session.add(user)
         db.session.commit()
         
@@ -49,16 +55,19 @@ def authenticated_client(client, user):
 def sample_data(app):
     """Cria dados de teste (usuário, categorias, transações)"""
     with app.app_context():
-        # Usuário
-        user = User(username='testuser', monthly_limit=1000)
-        user.set_password('testpass123')
-        db.session.add(user)
+        user = User.query.filter_by(username='testuser').first()
+        if not user:
+            user = User(username='testuser', monthly_limit=1000)
+            user.set_password('testpass123')
+            db.session.add(user)
+            db.session.flush()
         
         # Categorias
-        cat1 = Category(name='Alimentação', user_id=1)
-        cat2 = Category(name='Transporte', user_id=1)
+        cat1 = Category(name='Alimentação', user_id=user.id)
+        cat2 = Category(name='Transporte', user_id=user.id)
         db.session.add(cat1)
         db.session.add(cat2)
+        db.session.flush()
         
         # Transações
         trans1 = Transaction(
@@ -66,8 +75,8 @@ def sample_data(app):
             description='Supermercado',
             amount=200.0,
             type='despesa',
-            category_id=1,
-            user_id=1
+            category_id=cat1.id,
+            user_id=user.id
         )
         trans2 = Transaction(
             date=datetime(2024, 1, 20),
@@ -75,7 +84,7 @@ def sample_data(app):
             amount=3000.0,
             type='receita',
             category_id=None,
-            user_id=1
+            user_id=user.id
         )
         db.session.add(trans1)
         db.session.add(trans2)

@@ -9,7 +9,7 @@ class TestTransactions:
         """Testa acesso à página de adicionar transação"""
         response = authenticated_client.get('/add_transaction')
         assert response.status_code == 200
-        assert b'Adicionar transacao' in response.data
+        assert 'Adicionar transação' in response.data.decode('utf-8')
     
     def test_add_transaction_post(self, authenticated_client):
         """Testa adicionar transação via POST"""
@@ -22,7 +22,7 @@ class TestTransactions:
         }, follow_redirects=True)
         
         assert response.status_code == 200
-        assert b'Gerenciador de Financas' in response.data
+        assert 'Gerenciador de Finanças' in response.data.decode('utf-8')
     
     def test_add_transaction_with_category(self, authenticated_client, sample_data):
         """Testa adicionar transação com categoria"""
@@ -41,7 +41,7 @@ class TestTransactions:
         response = authenticated_client.get('/transactions')
         assert response.status_code == 200
         assert b'Supermercado' in response.data
-        assert b'Salario' in response.data
+        assert 'Salário' in response.data.decode('utf-8')
     
     def test_transactions_filter_by_month(self, authenticated_client, sample_data):
         """Testa filtro de transações por mês"""
@@ -54,7 +54,7 @@ class TestTransactions:
         response = authenticated_client.get('/transactions?type=despesa')
         assert response.status_code == 200
         assert b'Supermercado' in response.data
-        assert b'Salario' not in response.data
+        assert 'Salário' not in response.data.decode('utf-8')
     
     def test_edit_transaction_get(self, authenticated_client, sample_data):
         """Testa acesso à página de editar transação"""
@@ -86,7 +86,7 @@ class TestTransactions:
         })
         
         assert response.status_code == 200
-        assert b'Data invalida' in response.data
+        assert 'Data inválida' in response.data.decode('utf-8')
     
     def test_delete_transaction(self, authenticated_client, sample_data):
         """Testa exclusão de transação"""

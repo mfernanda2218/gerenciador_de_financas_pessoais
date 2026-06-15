@@ -22,6 +22,7 @@ pip install -r requirements-test.txt
 
 REM Executar testes
 echo 🚀 Executando testes...
+set PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
 pytest tests/ -v --tb=short --cov=app --cov-report=html --cov-report=term-missing
 
 echo.

@@ -8,7 +8,7 @@ class TestCategories:
         """Testa listagem de categorias"""
         response = authenticated_client.get('/categories')
         assert response.status_code == 200
-        assert b'Alimentacao' in response.data
+        assert 'Alimentação' in response.data.decode('utf-8')
         assert b'Transporte' in response.data
     
     def test_add_category(self, authenticated_client):
@@ -18,7 +18,7 @@ class TestCategories:
         }, follow_redirects=True)
         
         assert response.status_code == 200
-        assert b'Saude' in response.data
+        assert 'Saúde' in response.data.decode('utf-8')
     
     def test_add_empty_category(self, authenticated_client):
         """Testa adição de categoria vazia"""
@@ -35,7 +35,7 @@ class TestCategories:
         }, follow_redirects=True)
         
         assert response.status_code == 200
-        assert b'Categoria ja existe' in response.data
+        assert 'Categoria já existe' in response.data.decode('utf-8')
     
     def test_edit_category(self, authenticated_client, sample_data):
         """Testa edição de categoria"""
@@ -44,7 +44,7 @@ class TestCategories:
         }, follow_redirects=True)
         
         assert response.status_code == 200
-        assert b'Alimentacao Editada' in response.data
+        assert 'Alimentação Editada' in response.data.decode('utf-8')
     
     def test_edit_empty_category(self, authenticated_client, sample_data):
         """Testa edição de categoria com nome vazio"""
@@ -61,7 +61,7 @@ class TestCategories:
         }, follow_redirects=True)
         
         assert response.status_code == 200
-        assert b'Ja existe uma categoria com esse nome' in response.data
+        assert 'Já existe uma categoria com esse nome' in response.data.decode('utf-8')
     
     def test_delete_category(self, authenticated_client, sample_data):
         """Testa exclusão de categoria"""
@@ -80,7 +80,7 @@ class TestCategories:
         assert response.status_code == 200
         # Categoria deve ser removida e transação fica sem categoria
         response = authenticated_client.get('/categories')
-        assert b'Alimentacao' not in response.data
+        assert '<td>Alimentação</td>' not in response.data.decode('utf-8')
     
     def test_edit_nonexistent_category(self, authenticated_client):
         """Testa edição de categoria inexistente"""

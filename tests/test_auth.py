@@ -20,7 +20,7 @@ class TestAuth:
         }, follow_redirects=True)
         
         assert response.status_code == 200
-        assert b'Gerenciador de Finanças' in response.data
+        assert 'Gerenciador de Finanças' in response.data.decode('utf-8')
     
     def test_register_password_mismatch(self, client):
         """Testa registro com senhas diferentes"""
@@ -31,7 +31,7 @@ class TestAuth:
         })
         
         assert response.status_code == 200
-        assert b'As senhas nao conferem' in response.data
+        assert 'As senhas não conferem' in response.data.decode('utf-8')
     
     def test_register_short_password(self, client):
         """Testa registro com senha curta"""
@@ -58,7 +58,7 @@ class TestAuth:
         })
         
         assert response.status_code == 200
-        assert b'Esse usuario ja existe' in response.data
+        assert 'Esse usuário já existe' in response.data.decode('utf-8')
     
     def test_login_get(self, client):
         """Testa acesso à página de login"""
@@ -79,7 +79,7 @@ class TestAuth:
         }, follow_redirects=True)
         
         assert response.status_code == 200
-        assert b'Gerenciador de Finanças' in response.data
+        assert 'Gerenciador de Finanças' in response.data.decode('utf-8')
     
     def test_login_invalid_credentials(self, client, user):
         """Testa login com credenciais inválidas"""
@@ -94,7 +94,7 @@ class TestAuth:
         })
         
         assert response.status_code == 200
-        assert b'Usuario ou senha invalidos' in response.data
+        assert 'Usuário ou senha inválidos' in response.data.decode('utf-8')
     
     def test_logout(self, authenticated_client):
         """Testa logout"""

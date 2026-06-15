@@ -33,7 +33,7 @@ class TestDashboard:
         assert data['total_receita'] == 3000.0
         assert data['total_despesa'] == 200.0
         assert data['total_mensal'] == 2800.0
-        assert 'Alimentacao' in data['gastos_por_categoria']
+        assert 'Alimentação' in data['gastos_por_categoria']
     
     def test_dashboard_data_filtered(self, authenticated_client, sample_data):
         """Testa API do dashboard com filtros"""
@@ -71,7 +71,7 @@ class TestDashboard:
         
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert data['message'] == 'Valor invalido'
+        assert data['message'] == 'Valor inválido'
     
     def test_set_monthly_limit_negative(self, authenticated_client):
         """Testa configuração de limite mensal negativo"""
@@ -81,7 +81,7 @@ class TestDashboard:
         
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert data['message'] == 'Valor invalido'
+        assert data['message'] == 'Valor inválido'
     
     def test_add_category_api(self, authenticated_client):
         """Testa API de adicionar categoria"""
@@ -101,7 +101,7 @@ class TestDashboard:
         
         assert response.status_code == 409
         data = json.loads(response.data)
-        assert data['message'] == 'Categoria ja existe'
+        assert data['message'] == 'Categoria já existe'
     
     def test_add_category_api_empty(self, authenticated_client):
         """Testa API de adicionar categoria vazia"""
@@ -111,7 +111,7 @@ class TestDashboard:
         
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert data['message'] == 'Nome invalido'
+        assert data['message'] == 'Nome inválido'
     
     def test_spending_alert(self, authenticated_client, sample_data):
         """Testa alerta de gasto quando ultrapassa limite"""
