@@ -86,6 +86,7 @@
                                 <td class="right">
                                     <a class="btn btn-secondary btn-sm" href="/transaction/{{ t.id }}/edit">Editar</a>
                                     <form method="POST" action="/transaction/{{ t.id }}/delete" style="display:inline;" onsubmit="return confirm('Excluir esta transação?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button class="btn btn-secondary btn-sm" type="submit">Excluir</button>
                                     </form>
                                 </td>

@@ -22,6 +22,7 @@
                 <div class="alert">{{ error }}</div>
             {% endif %}
             <form class="inline" method="POST" action="/categories/add" style="align-items:flex-end;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="field" style="flex:1;">
                     <label>Nova categoria</label>
                     <input type="text" name="name" placeholder="Ex: Alimentação" required>
@@ -47,10 +48,12 @@
                                 <td class="right">{{ counts.get(cat.id, 0) }}</td>
                                 <td class="right">
                                     <form method="POST" action="/category/{{ cat.id }}/edit" class="inline" style="justify-content:flex-end;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="text" name="name" value="{{ cat.name }}" required>
                                         <button class="btn btn-secondary btn-sm" type="submit">Renomear</button>
                                     </form>
                                     <form method="POST" action="/category/{{ cat.id }}/delete" style="display:inline;" onsubmit="return confirm('Excluir esta categoria? As transações ficarão como sem categoria.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button class="btn btn-secondary btn-sm" type="submit">Excluir</button>
                                     </form>
                                 </td>

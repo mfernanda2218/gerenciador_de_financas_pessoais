@@ -21,6 +21,7 @@
                 <div class="alert">{{ error }}</div>
             {% endif %}
             <form method="POST" class="grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="field">
                     <label>Data</label>
                     <input type="date" name="date" required value="{{ transaction.date.strftime('%Y-%m-%d') }}">

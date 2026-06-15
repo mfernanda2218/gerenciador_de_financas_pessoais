@@ -29,6 +29,17 @@ function setAlert(message) {
     }
 }
 
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
+
+function formHeaders() {
+    const token = getCsrfToken();
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    if (token) headers['X-CSRFToken'] = token;
+    return headers;
+}
+
 function loadDashboard() {
     const month = (document.getElementById('month')?.value || '').trim();
     const year = (document.getElementById('year')?.value || '').trim();
@@ -121,7 +132,7 @@ function addCategory() {
 
     fetch('/add_category', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: formHeaders(),
         body: `name=${encodeURIComponent(name)}`
     })
         .then(async (response) => {
@@ -159,7 +170,7 @@ function saveMonthlyLimit() {
 
     fetch('/set_monthly_limit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: formHeaders(),
         body: `monthly_limit=${encodeURIComponent(value)}`
     })
         .then(async (response) => {

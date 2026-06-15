@@ -44,12 +44,18 @@ class User(db.Model, UserMixin):
         """Verifica se a senha está correta"""
         return bcrypt.check_password_hash(self.password, password)
 
+    def __repr__(self):
+        return f'<User {self.username}>'
+
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
     __table_args__ = (db.UniqueConstraint('user_id', 'name', name='uq_category_user_name'),)
+
+    def __repr__(self):
+        return f'<Category {self.name}>'
 
 class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,9 +67,12 @@ class Transaction(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     limit_monthly = db.Column(db.Float, default=0)  # Limite mensal para alerta (por categoria ou geral)
 
+    def __repr__(self):
+        return f'<Transaction {self.description}>'
+
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 def get_category_counts(user_id):
     """Helper function to get transaction counts per category"""
@@ -163,18 +172,42 @@ def index():
 @login_required
 def add_transaction():
     if request.method == 'POST':
-        date = datetime.strptime(request.form['date'], '%Y-%m-%d')
+        error = None
+        categories = Category.query.filter_by(user_id=current_user.id).order_by(Category.name.asc()).all()
+
+        try:
+            date = datetime.strptime(request.form.get('date', ''), '%Y-%m-%d')
+        except ValueError:
+            error = 'Data inválida.'
+            return render_template('add_transaction.html', categories=categories, error=error), 400
+
+        raw_amount = (request.form.get('amount') or '').strip()
+        try:
+            amount = float(raw_amount)
+        except ValueError:
+            error = 'Valor inválido.'
+            return render_template('add_transaction.html', categories=categories, error=error), 400
+
+        trans_type = request.form.get('type')
+        if trans_type not in ('receita', 'despesa'):
+            error = 'Tipo inválido.'
+            return render_template('add_transaction.html', categories=categories, error=error), 400
+
         raw_category = (request.form.get('category') or '').strip()
-        category_id = int(raw_category) if raw_category else None
+        try:
+            category_id = int(raw_category) if raw_category else None
+        except ValueError:
+            category_id = None
         if category_id is not None and not Category.query.filter_by(id=category_id, user_id=current_user.id).first():
             category_id = None
-        trans = Transaction(date=date, description=request.form['description'], amount=float(request.form['amount']),
-                            type=request.form['type'], category_id=category_id, user_id=current_user.id)
+
+        trans = Transaction(date=date, description=request.form.get('description') or '', amount=amount,
+                            type=trans_type, category_id=category_id, user_id=current_user.id)
         db.session.add(trans)
         db.session.commit()
         return redirect(url_for('index'))
-    categories = Category.query.filter_by(user_id=current_user.id).all()
-    return render_template('add_transaction.html', categories=categories)
+    categories = Category.query.filter_by(user_id=current_user.id).order_by(Category.name.asc()).all()
+    return render_template('add_transaction.html', categories=categories, error=None)
 
 @app.route('/transactions')
 @login_required
@@ -259,7 +292,10 @@ def edit_transaction(transaction_id):
             return render_template('edit_transaction.html', transaction=transaction, categories=categories, error=error)
 
         raw_category = (request.form.get('category') or '').strip()
-        category_id = int(raw_category) if raw_category else None
+        try:
+            category_id = int(raw_category) if raw_category else None
+        except ValueError:
+            category_id = None
         if category_id is not None and not Category.query.filter_by(id=category_id, user_id=current_user.id).first():
             category_id = None
 
@@ -352,7 +388,7 @@ def import_csv():
     if file.filename == '':
         return jsonify({'message': 'Nenhum arquivo selecionado'}), 400
     
-    if not file.filename.endswith('.csv'):
+    if not file.filename.lower().endswith('.csv'):
         return jsonify({'message': 'Arquivo deve ser CSV'}), 400
     
     try:
@@ -382,19 +418,22 @@ def import_csv():
             if row['type'] not in ['receita', 'despesa']:
                 return jsonify({'message': f'Tipo inválido: {row["type"]} (deve ser "receita" ou "despesa")'}), 400
             
-            # Validate category
-            if pd.isna(row['category']) or not str(row['category']).strip():
-                return jsonify({'message': 'Categoria não pode estar vazia'}), 400
+            if not pd.isna(row['category']) and len(str(row['category']).strip()) > 100:
+                return jsonify({'message': 'Categoria deve ter no máximo 100 caracteres'}), 400
         
         # Import data
         for _, row in df.iterrows():
-            cat = Category.query.filter_by(name=row['category'], user_id=current_user.id).first()
-            if not cat:
-                cat = Category(name=row['category'], user_id=current_user.id)
-                db.session.add(cat)
-                db.session.commit()
+            category_name = '' if pd.isna(row['category']) else str(row['category']).strip()
+            cat = None
+            if category_name:
+                cat = Category.query.filter_by(name=category_name, user_id=current_user.id).first()
+                if not cat:
+                    cat = Category(name=category_name, user_id=current_user.id)
+                    db.session.add(cat)
+                    db.session.flush()
             trans = Transaction(date=datetime.strptime(row['date'], '%Y-%m-%d'), description=row['description'],
-                                amount=float(row['amount']), type=row['type'], category_id=cat.id, user_id=current_user.id)
+                                amount=float(row['amount']), type=row['type'],
+                                category_id=cat.id if cat else None, user_id=current_user.id)
             db.session.add(trans)
         db.session.commit()
         return jsonify({'message': 'CSV importado com sucesso'})
@@ -408,6 +447,7 @@ def import_csv():
 def export_csv():
     month = request.args.get('month')
     year = request.args.get('year')
+    trans_type = (request.args.get('type') or '').strip()
 
     query = Transaction.query.filter_by(user_id=current_user.id)
     if month:
@@ -416,6 +456,8 @@ def export_csv():
             query = query.filter(db.extract('month', Transaction.date) == month_int)
         except ValueError:
             pass
+    if trans_type in ('receita', 'despesa'):
+        query = query.filter(Transaction.type == trans_type)
     if year:
         try:
             year_int = int(year)
@@ -435,7 +477,7 @@ def export_csv():
         }
         for t in trans
     ]
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data, columns=['date', 'description', 'amount', 'type', 'category'])
     output = BytesIO()
     df.to_csv(output, index=False)
     output.seek(0)
@@ -446,7 +488,7 @@ def export_csv():
 def dashboard_data():
     try:
         month = request.args.get('month')
-        year = request.args.get('year', datetime.now().year)
+        year = request.args.get('year')
         query = Transaction.query.filter_by(user_id=current_user.id)
         if month:
             try:
